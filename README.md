@@ -3,8 +3,8 @@
 Re-analysis of single-cell multiCUT&Tag data from Gopalan et al., _Molecular Cell_ (2021).
 
 Paper: https://doi.org/10.1016/j.molcel.2021.09.019  
-GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSE171554  
-SRA: https://www.ncbi.nlm.nih.gov/sra?term=SRP313652  
+GEO: https://www.ncbi.nlm.nih.gov/geo/query/acc.cgi?acc=GSM5227096  
+SRA: https://trace.ncbi.nlm.nih.gov/Traces/sra/?run=SRR14150925  
 Code: https://github.com/snehagopalan710/Bulk-Multi-CUT-Tag
 
 Install dependencies
