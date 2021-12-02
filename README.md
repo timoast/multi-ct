@@ -19,3 +19,11 @@ This pipeline involves downloading data from AWS, which includes download costs.
 ```
 snakemake -j 24
 ```
+
+## Steps
+
+1. Download raw data
+2. Attach cell barcodes
+3. Demultiplex based on Tn5 barcodes and trim reads
+4. Map reads to mm10 genome
+5. Create fragment file
