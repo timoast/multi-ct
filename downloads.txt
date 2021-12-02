@@ -1,1 +1,0 @@
-s3://sra-pub-src-15/SRR14150925/SC_AM_index.fastq.gz.1
