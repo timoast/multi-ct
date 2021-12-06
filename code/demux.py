@@ -23,6 +23,10 @@ parser.add_argument('--output', help='Path to output directory')
 args = parser.parse_args()
 
 
+def hamming_distance(s1, s2):
+    return sum(c1 != c2 for c1, c2 in zip(s1, s2))
+
+
 def open_fastq(f):
     if os.path.isfile(f):
         if f.endswith(".gz"):
@@ -46,7 +50,7 @@ def get_entry(f):
 
 
 def extract_sequences(sequence, bc_len=8, trim=42):
-    tn5_bc = sequence[:bc1_len]
+    tn5_bc = sequence[:bc_len]
     trimmed = sequence[trim:]
     return((tn5_bc, trimmed))
 
@@ -64,7 +68,7 @@ outpath = Path(args.output)
 if not outpath.exists():
     os.mkdir(outpath)
 
-i5_marks = [tn5_i5_barcodes[x] for x in tn5_i5_barcodes.keys()]
+i5_marks = [tn5_barcodes_i5[x] for x in tn5_barcodes_i5.keys()]
 i7_marks = [tn5_barcodes_i7[x] for x in tn5_barcodes_i7.keys()]
 i5_marks.append("unknown")
 i7_marks.append("unknown")
@@ -92,15 +96,25 @@ while True:
     i5_seqs = extract_sequences(sequence=r1_entry[1])
     i7_seqs = extract_sequences(sequence=r2_entry[1])
     
-    if i5_seqs[0] in tn5_i5_barcodes.keys():
-        i5_mark = tn5_i5_barcodes[i5_seqs[0]]
+    if i5_seqs[0] in tn5_barcodes_i5.keys():
+        i5_mark = tn5_barcodes_i5[i5_seqs[0]]
     else:
-        i5_mark = "unknown"
+        # compute hamming distance
+        hams = [hamming_distance(i5_seqs[0], x) < 2 for x in tn5_barcodes_i5.keys()]
+        if sum(hams) == 1:
+            i5_mark = tn5_barcodes_i5[list(tn5_barcodes_i5.keys())[hams.index(True)]]
+        else:
+            i5_mark = "unknown"
     
-    if i7_seqs[0] in tn5_i7_barcodes.key():
-        i7_mark = tn5_i7_barcodes[i7_seqs[0]]
+    if i7_seqs[0] in tn5_barcodes_i7.keys():
+        i7_mark = tn5_barcodes_i7[i7_seqs[0]]
     else:
-        i7_mark = "unknown"
+        # compute hamming distance
+        hams = [hamming_distance(i7_seqs[0], x) < 2 for x in tn5_barcodes_i7.keys()]
+        if sum(hams) == 1:
+            i7_mark = tn5_barcodes_i7[list(tn5_barcodes_i7.keys())[hams.index(True)]]
+        else:
+            i7_mark = "unknown"
     
     # insert trimmed read
     r1_entry[1] = i5_seqs[1]
@@ -114,6 +128,7 @@ while True:
     r1_outf.write("".join(r1_entry))
     r2_outf.write("".join(r2_entry))
     
+    x += 1
     if x % 1e6 == 0:
         print("Processed " + str(int(x/1e6)) + " million reads", file=sys.stderr, end="\r")
 
