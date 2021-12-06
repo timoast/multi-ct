@@ -1,15 +1,5 @@
-
-#rule all:
-#    input:
-#        "fragments/H3K27ac_H3K27ac.tsv.gz",
-#        "fragments/H3K27ac_H3K27me3.tsv.gz",
-#        "fragments/H3K27ac_RNAPII.tsv.gz",
-#        "fragments/H3K27me3_H3K27me3.tsv.gz",
-#        "fragments/H3K27me3_H3K27ac.tsv.gz",
-#        "fragments/H3K27me3_RNAPII.tsv.gz",
-#        "fragments/RNAPII_RNAPII.tsv.gz",
-#        "fragments/RNAPII_H3K27ac.tsv.gz",
-#        "fragments/RNAPII_H3K27me3.tsv.gz"
+rule all:
+    input: directory("fragments")
 
 rule get_genome:
     output: "genome/mm10.fa.gz"
@@ -37,6 +27,7 @@ rule download:
     output: "data/SC_AM_index.fastq.gz",
             "data/SC_AM_R1.fastq.gz",
             "data/SC_AM_R2.fastq.gz"
+    message: "Download raw data from AWS"
     shell:
         """
         while read line; do
@@ -51,6 +42,7 @@ rule decompress_fastq:
     output: "data/SC_AM_index.fastq",
            "data/SC_AM_R1.fastq",
            "data/SC_AM_R2.fastq"
+    message: "Decompress fastq files"
     shell:
         """
         gzip -d {input}
@@ -62,6 +54,7 @@ rule attach_barcodes:
         r1="data/SC_AM_R1.fastq",
         r2="data/SC_AM_R2.fastq"
     output: "data/SC_AM_R1.barcoded.fastq", "data/SC_AM_R2.barcoded.fastq"
+    message: "Attach cell barcodes"
     shell:
         """
         sinto barcode \
@@ -71,43 +64,61 @@ rule attach_barcodes:
                 --bases 16
         """
 
-#rule split:
-#    input: 
-#        bc1="data/barcodes_a.fa",
-#        bc2="data/barcodes_b.fa",
-#    output:
-#    threads: 1
-#    shell:
-#        """
-#        # split by tn5 barcode, trim reads
-#        """
-#
-#rule map:
-#    input:
-#        genome="genome/mm10.fa",
-#        r1=,
-#        r2=
-#    output:
-#    threads: 12
-#    shell:
-#        """
-#        bwa-mem2 mem
-#        """
-#
-#rule sort_bam:
-#    input:
-#    output:
-#    threads: 6
-#    shell:
-#        """
-#        samtools sort -@ {threads} -O bam {input} > {output}
-#        """
-#
-#rule fragment:
-#    input:
-#    output:
-#    threads: 12
-#    shell:
-#        """
-#        # sinto fragments
-#        """
+rule split:
+    input: 
+        bc1="data/barcodes_a.fa",
+        bc2="data/barcodes_b.fa",
+        r1="data/SC_AM_R1.barcoded.fastq",
+        r2="data/SC_AM_R2.barcoded.fastq"
+    output: directory("demux")
+    message: "Split by Tn5 barcode, trim reads"
+    threads: 1
+    shell:
+        """
+        python code/demux.py \
+            --read1 {input.r1} \
+            --read2 {input.r2} \
+            --tn5_i5 {input.bc1} \
+            --tn5_i7 {input.bc2} \
+            --output split
+        """
+
+rule map:
+    input:
+        dir=directory("demux"),
+        genome="genome/mm10.fa"
+    output: directory("mapped")
+    message: "Map reads to genome"
+    threads: 24
+    shell:
+        """
+        mkdir {output}
+        cd {input.dir}
+        for R1 in $(ls -d *.R1.fastq); do
+            fname=${{R1%.R1.fastq}}
+            R2=$fname.R2.fastq
+            bwa-mem2 mem -t {threads} {input.genome} $R1 $R2 \
+                | samtools sort -@ {threads} -O bam - \
+                > "../{output}/"$fname".bam"
+            samtools index -@ {threads} "../{output}/"$fname".bam"
+        done
+        """
+
+rule fragments:
+    input: directory("mapped")
+    output: directory("fragments")
+    message: "Create fragment file"
+    threads: 12
+    shell:
+        """
+        mkdir {output}
+        cd {input}
+        for bam in $(ls -d *.bam); do
+            fname=${{bam%.bam}}
+            sinto fragments -p {threads} -b $bam --barcode_regex "[^:]*" -f ../{output}/$fname.tmp
+            sort -k1,1 -k2,2n ../{output}/$fname.tmp > ../{output}/$fname.tsv
+            bgzip -@ {threads} ../{output}/$fname.tsv
+            tabix -p bed ../{output}/$fname.tsv.gz
+            rm ../{output}/$fname.tmp
+        done
+        """
