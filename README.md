@@ -14,7 +14,7 @@ mamba env create -f env.yaml
 conda activate mct
 ```
 
-This pipeline involves downloading data from AWS, which includes download costs. Make sure that you have an AWS account configured.
+This pipeline involves downloading data from AWS, which includes download costs. Make sure that you have an AWS account configured by running `aws configure` first.
 
 ```
 snakemake -j 24
