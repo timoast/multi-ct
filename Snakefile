@@ -80,7 +80,7 @@ rule split:
             --read2 {input.r2} \
             --tn5_i5 {input.bc1} \
             --tn5_i7 {input.bc2} \
-            --output split
+            --output demux
         """
 
 rule map:
@@ -97,7 +97,7 @@ rule map:
         for R1 in $(ls -d *.R1.fastq); do
             fname=${{R1%.R1.fastq}}
             R2=$fname.R2.fastq
-            bwa-mem2 mem -t {threads} {input.genome} $R1 $R2 \
+            bwa-mem2 mem -t {threads} ../{input.genome} $R1 $R2 \
                 | samtools sort -@ {threads} -O bam - \
                 > "../{output}/"$fname".bam"
             samtools index -@ {threads} "../{output}/"$fname".bam"
