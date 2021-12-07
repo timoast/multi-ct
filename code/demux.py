@@ -119,6 +119,10 @@ while True:
     # insert trimmed read
     r1_entry[1] = i5_seqs[1]
     r2_entry[1] = i7_seqs[1]
+    
+    # trim quality scores
+    r1_entry[3] = r1_entry[3][42:]
+    r2_entry[3] = r2_entry[3][42:]
 
     # write to file according to barcodes
     outfile = i5_mark + "-" + i7_mark
